@@ -1,0 +1,11 @@
+- Clean up code
+- Modify code to work with xml data where the publisher is different than the Company
+    - This will most likely require DB changes
+- Figure out how to make a setting page so user can add in DB info and how often it runs
+- add more to the Job posting array to get all the data needed
+    - Should we redo posting plugin if there is time?
+- Figure out how to deal with both updates on post and deletion of post in XML
+    -either do it while parsing, or another function call
+- Make sure Sql has protection against injection
+- Set up crons 
+- add some id into url table to track whos account its tied too. will replace Publisher ID
