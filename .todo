@@ -1,11 +1,20 @@
 - Clean up code
 - Modify code to work with xml data where the publisher is different than the Company
     - This will most likely require DB changes
+        - Possibly working with keys 
+        - looking into creating an ER model to design the database, so that we can understand the constraints to develop the keys  
 - Figure out how to make a setting page so user can add in DB info and how often it runs
+    - https://stackoverflow.com/questions/10204902/database-design-for-user-settings  
+    - Here, they created the tables within the query, but I am assuming if the data is placed in an excel. We can use there script to extract the information. 
+    - I am not sure if there is any way you can directly put data into the database without creating a csv file at first   
 - add more to the Job posting array to get all the data needed
     - Should we redo posting plugin if there is time?
+        - Is there currently any issues with it?
 - Figure out how to deal with both updates on post and deletion of post in XML
     -either do it while parsing, or another function call
 - Make sure Sql has protection against injection
+   -  https://www.acunetix.com/websitesecurity/sql-injection/#:~:text=How%20to%20Prevent%20an%20SQL,inputs%20such%20as%20login%20forms. 
+   - For php it says to use PDO instead of MySQLi
 - Set up crons 
+   -  https://supabase.com/blog/postgres-as-a-cron-server --> Is this what we are looking for ?
 - add some id into url table to track whos account its tied too. will replace Publisher ID

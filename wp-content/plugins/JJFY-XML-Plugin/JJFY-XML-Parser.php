@@ -68,6 +68,7 @@ class  JJFYXMLParser{
             $wpdb -> query("INSERT INTO wp_job_postings (PublisherID, CompanyName, JobID, JobTitle, JobDesc) VALUES ((SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$jobInfo[4]'), '$jobInfo[0]', $jobInfo[1], '$jobInfo[2]', '$jobInfo[3]')");
         }
     }
+    
     public function updatePost(){
         /**
          * I think we can use wpdb -> update for this 
@@ -75,6 +76,7 @@ class  JJFYXMLParser{
          * pass in the job info array from the parseing function 
          * update post if needed
          */
+
     }
     public function deleteOldPost(){
         /**
