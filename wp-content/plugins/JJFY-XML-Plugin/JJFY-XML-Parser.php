@@ -35,7 +35,6 @@ class  JJFYXMLParser{
         // Will pull table and col name from settings so user can change it or hardcode if we dont have time
         //SQL Query to get company XML URLS from DP
         $URLS = $wpdb -> get_results("SELECT PublisherURL FROM wp_xml_links");
-
         //loops over URLS and saves them to array
         foreach($URLS as $URL){
             $url = trim($URL -> PublisherURL);
@@ -55,6 +54,7 @@ class  JJFYXMLParser{
                 //saving the needed job info into an array
                 $jobInfo = [$jobs -> company, $jobs -> partnerJobId, $jobs -> title, $jobs -> description, $xml -> publisher];
                 $this-> addPost($jobInfo);
+                $this-> updatePost(($jobInfo));
             }
         }
     }
@@ -62,21 +62,28 @@ class  JJFYXMLParser{
     public function addPost(&$jobInfo){
         //db global call
         global $wpdb;
+        $wpdb ->show_errors();
         //checking if job is present, if so it skips, if it is a new job, it adds to the db. (Might want to update this to check publisher id as well)
-        $isPresent = $wpdb -> get_results("SELECT PublisherID, JobID FROM wp_job_postings WHERE JobID = '$jobInfo[1]'");
+        $publisherID = $wpdb -> get_col( $wpdb -> prepare ("SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$jobInfo[4]'"));
+        $isPresent = $wpdb -> get_results("SELECT PublisherID, JobID FROM wp_job_postings WHERE JobID = '$jobInfo[1]' AND PublisherID = $publisherID[0]");
         if (count($isPresent) == 0){
             $wpdb -> query("INSERT INTO wp_job_postings (PublisherID, CompanyName, JobID, JobTitle, JobDesc) VALUES ((SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$jobInfo[4]'), '$jobInfo[0]', $jobInfo[1], '$jobInfo[2]', '$jobInfo[3]')");
         }
     }
     
-    public function updatePost(){
+    public function updatePost(&$jobInfo){
         /**
          * I think we can use wpdb -> update for this 
          * https://developer.wordpress.org/reference/classes/wpdb/update/
          * pass in the job info array from the parseing function 
          * update post if needed
          */
-
+        global $wpdb;
+        $wpdb -> show_errors();
+        //gets the publisher id from the links db 
+        $publisherID = $wpdb -> get_col( $wpdb -> prepare ("SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$jobInfo[4]'"));
+        //checks if data needs updated if it does, updates the data (this can be changed to the update class from wpdb)
+        $wpdb -> query($wpdb -> prepare("UPDATE wp_job_postings SET CompanyName = '$jobInfo[0]', JobID = $jobInfo[1], JobTitle = '$jobInfo[2]', JobDesc = '$jobInfo[3]' WHERE PublisherID = $publisherID[0] AND JobID = $jobInfo[1]"));
     }
     public function deleteOldPost(){
         /**
