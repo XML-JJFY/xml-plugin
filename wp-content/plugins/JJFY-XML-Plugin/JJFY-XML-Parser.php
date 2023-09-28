@@ -46,17 +46,26 @@ class  JJFYXMLParser{
 
     //Parses XML and calls functions relating to job postings
     public function parse_xml(&$companyURLS){
+        $job_array = [];
+        $jobInfo = [];
         foreach($companyURLS as $URLS){
             //pulls xml data from the url array passed to it
             $xml = simplexml_load_file($URLS) or die("Cannot load URL");
             //loops over the job postings
-            foreach ($xml->job as $jobs){
+            foreach ($xml as $jobs){
                 //saving the needed job info into an array
-                $jobInfo = [$jobs -> company, $jobs -> partnerJobId, $jobs -> title, $jobs -> description, $xml -> publisher];
-                $this-> addPost($jobInfo);
-                $this-> updatePost(($jobInfo));
+                if(count($jobs) != 0){
+                    $jobInfo = [$jobs -> company, $jobs -> partnerJobId, $jobs -> title, $jobs -> description, $xml -> publisher];
+                    array_push($job_array,[$xml -> publisher, $jobs-> partnerJobId]);
+                }
+                if (count($jobInfo) != 0){
+                    $this-> addPost($jobInfo);
+                    $this-> updatePost(($jobInfo));
+                }
             }
         }
+        $this-> deleteOldPost($job_array);
+
     }
 
     public function addPost(&$jobInfo){
@@ -68,6 +77,7 @@ class  JJFYXMLParser{
         $isPresent = $wpdb -> get_results("SELECT PublisherID, JobID FROM wp_job_postings WHERE JobID = '$jobInfo[1]' AND PublisherID = $publisherID[0]");
         if (count($isPresent) == 0){
             $wpdb -> query("INSERT INTO wp_job_postings (PublisherID, CompanyName, JobID, JobTitle, JobDesc) VALUES ((SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$jobInfo[4]'), '$jobInfo[0]', $jobInfo[1], '$jobInfo[2]', '$jobInfo[3]')");
+            $this->postJob($jobInfo);
         }
     }
     
@@ -85,14 +95,34 @@ class  JJFYXMLParser{
         //checks if data needs updated if it does, updates the data (this can be changed to the update class from wpdb)
         $wpdb -> query($wpdb -> prepare("UPDATE wp_job_postings SET CompanyName = '$jobInfo[0]', JobID = $jobInfo[1], JobTitle = '$jobInfo[2]', JobDesc = '$jobInfo[3]' WHERE PublisherID = $publisherID[0] AND JobID = $jobInfo[1]"));
     }
-    public function deleteOldPost(){
+    public function deleteOldPost(&$job_array){
         /**
          * I am not 100% sure if there is gonna be a easy way to to this. Might have to do a custom query here.
          * Could make an array of all job posting id/publisher id  in the parsing function, pass that down then compare the db to that and see if there is any that is not in the array. If so, delete them. 
          */
-        
-    }
+        global $wpdb;
+        $publisherID = [];
+        $jobIDS = [];
+        foreach($job_array as $job){
+            array_push($publisherID, $wpdb -> get_var( $wpdb -> prepare ("SELECT PublisherID FROM wp_xml_links WHERE PublisherName = '$job[0]'")));
+            foreach($job as $jobID){
+                array_push($jobIDS, $job[1]);
+            }
+        }
+        $publisherID = array_unique($publisherID);
+        $jobIDS= array_unique($jobIDS);
 
+        //checking if any jobs have been deleted if so, delete them
+        // DELETE FROM `wp_job_postings` WHERE JobID AND PublisherID NOT IN (1114, 4)
+        // $wpdb -> query($wpdb -> prepare("DELETE * FROM wp_job_postings WHERE "));
+    }
+    public function postJob(&$jobInfo){
+        //this is just a test to see if this works
+        //need to dig around in wordpress to see how the post work for the job plugin
+        // global $wpdb;
+        // print_r($jobInfo);
+        // $wpdb -> insert(`wp_posts`, array('ID' => $jobInfo[1], ));
+    }
     public function xmlParser(){
         $companyURLS = $this -> retrieveCompanyURLS();
         $this -> parse_XML($companyURLS);

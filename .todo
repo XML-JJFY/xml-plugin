@@ -16,13 +16,15 @@
 - Make sure Sql has protection against injection
    -  https://www.acunetix.com/websitesecurity/sql-injection/#:~:text=How%20to%20Prevent%20an%20SQL,inputs%20such%20as%20login%20forms. 
    - For php it says to use PDO instead of MySQLi
+   - i think wordpress has something like that with the prepare function
 - Set up crons 
    -  https://supabase.com/blog/postgres-as-a-cron-server --> Is this what we are looking for ?
    -  something like that, I am asking at the meeting if we can use a server based on vs wp
    
 - add some id into url table to track whos account its tied too. will replace Publisher ID
 - Update function
-    -needs to switch to the wpdb ->update function. Got it to work via normal sql. 
+    -needs to switch to the wpdb ->update function. Got it to work via normal sql.
+
 
 - testing
     -what are some edge cases we should test for?
