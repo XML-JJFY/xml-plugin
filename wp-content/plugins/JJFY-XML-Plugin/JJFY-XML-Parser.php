@@ -116,7 +116,7 @@ class  JJFYXMLParser{
         // $wpdb -> query($wpdb -> prepare("DELETE * FROM wp_job_postings WHERE "));
     }
     public function addMetaData(&$jobInfo){
-        //if anyone can get the built in inserts to work it will be cleaner leaving them there for now
+        //if anyone can get the built in inserts to work it will be cleaner leaving them there for now. 
         global $wpdb;
         //setting var for salary
         $payHigh = $jobInfo[11];
@@ -127,17 +127,29 @@ class  JJFYXMLParser{
         $post_id = $wpdb -> get_col($wpdb -> prepare ("SELECT ID FROM wp_posts WHERE job_posting_id = $jobInfo[1] AND post_author = 1"));
         if ($post_id != null || 0){
             //Adding reletive post meta.
+            // //add post meta
+            // add_post_meta($post_id, '_company_name', $jobInfo[0]);
+            // add_post_meta($post_id, '_company_website', $jobInfo[6]);
+            // add_post_meta($post_id, '_job_expires', $jobInfo[8]);
+            // add_post_meta($post_id, '_job_description', $jobInfo[3]);
+            // add_post_meta($post_id, '_job_title', $jobInfo[2]);
+            // add_post_meta($post_id, '_job_salary', $pay);
+
+            //normal insert
             $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_company_name' ,$post_id[0], '$jobInfo[0]')"));
-            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_company_name', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[0]));
-            $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_company_webstie' ,$post_id[0], '$jobInfo[6]')"));
-            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_company_webstie', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[6]));
+            $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_company_website' ,$post_id[0], '$jobInfo[6]')"));
             $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_expires' ,$post_id[0], '$jobInfo[8]')"));
-            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_expires', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[8]));
             $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_description' ,$post_id[0], '$jobInfo[3]')"));
-            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_description', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[3]));
             $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_title' ,$post_id[0], '$jobInfo[2]')"));
-            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_title', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[2]));
             $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_salary' ,$post_id[0], '$pay')"));
+
+            // wp built in insert
+            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_company_name', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[0]));
+            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_company_webstie', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[6]));
+            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_expires', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[8]));
+            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_description', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[3]));
+            // $wpdb -> insert('wp_postmeta', array('meta_key' => '_job_title', 'post_id' => $post_id[0], 'meta_value' => $jobInfo[2]));
+
 
             //extra statments
             // $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_title' ,$post_id[0], '$jobInfo[2]')"));
@@ -156,7 +168,6 @@ class  JJFYXMLParser{
             }
 
             // Sets job type in wp_term_relationships
-            print_r(strtolower($jobInfo[10])==='full-time');
             switch (strtolower($jobInfo[10])){
                 case 'full-time':
                     $wpdb -> insert('wp_term_relationships', array('object_id' => $post_id[0], 'term_taxonomy_id'=>3));
@@ -195,9 +206,33 @@ class  JJFYXMLParser{
         //inseting into the post table
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_posts (post_author, job_posting_id, post_content, post_title, post_status, comment_status,  ping_status, post_name, post_type) VALUES (1, $jobInfo[1], '$jobInfo[3]', '$jobInfo[2]', 'publish', 'closed', 'closed', '$postName', 'job_listing')"));
     }
+    public function URLS(){
+        //This will be for when we deploy if we use forminator it will replace the current url function
+        global $wpdb;
+        $companyURLS = [];
+        $index = 0;
+        //Getting userID and postID from the Table that hold them
+        $formData = $wpdb -> get_results("SELECT meta_value, entry_id FROM wp_frmt_form_entry_meta WHERE meta_key = 'hidden-1'");
+        //splitting them into their own arrays
+        $postID = array_column($formData, 'entry_id');
+        $userID = array_column($formData, 'meta_value');
+        foreach ($postID as $ID){
+            //checking if the postID is from the URL form. If it is pulling the url in and adding it to the array of urls.
+            $results = $wpdb -> get_var("SELECT COUNT(*) FROM  wp_frmt_form_entry WHERE form_id = 228 AND entry_id = $ID");
+            if($results == 1){
+                $url = $wpdb -> get_col($wpdb -> prepare("SELECT meta_value FROM wp_frmt_form_entry_meta WHERE meta_key = 'url-1' AND entry_id = $ID"));
+                array_push($companyURLS, [$userID[$index], $url]);
+                $index ++;
+            }else{
+                $index ++;
+            }
+        }
+        return $companyURLS;
+    }
     public function xmlParser(){
         $companyURLS = $this -> retrieveCompanyURLS();
         $this -> parse_XML($companyURLS);
+        $this -> URLS();
     }
     
 }
