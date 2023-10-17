@@ -10,7 +10,7 @@
 */
 if(!defined('ABSPATH'))
 {
-exit;
+    exit;
 }
 // Plugin Constants
 define('xmlParsePath', trailingslashit(plugin_dir_path(__FILE__)));
@@ -62,7 +62,7 @@ require_once xmlParsePath . '/settings/settings.php';
 class JJFYXMLParser{
     public function __construct()
     {
-    add_action('init', array($this,'xmlParser'));
+        add_action('init', array($this,'xmlParser'));
     }
 
 
