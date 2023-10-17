@@ -9,4 +9,3 @@ Set up a new Forminator form. With a website capture and a hidden field of user_
 Activate the plugin.
 Go to settings for the plugin and select your Fomrinator Form ID.
 Add the form shortcode to a page and enter in an XML link following LinkedIn format.
-
