@@ -41,8 +41,10 @@ wp-config.php
 # uncomment the next line
 # /wp-content/plugins
 /wp-content/plugins/wp-job-manager
-/wp-content/plugins/wp-dbmanager
-wp-content/backup-db
+/wp-content/plugins/user-registration
+/wp-content/plugins/wpjm-extra-fields
+/wp-content/plugins/forminator
+/wp-content/plugins/wp-crontrol
 # All themes
 #
 # Note: If you wish to whitelist themes,
