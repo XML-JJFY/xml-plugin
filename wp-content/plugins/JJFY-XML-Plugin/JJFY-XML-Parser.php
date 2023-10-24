@@ -108,16 +108,18 @@ class JJFYXMLParser{
             if (str_contains($company[1][0], '.xml')){
                 $xml = simplexml_load_file($company[1][0]) or die("Cannot load URL");
                 // loops over the job postings
-                foreach ($xml as $jobs){
+                if(!(count($xml -> job) == 0)){
+                    foreach ($xml as $jobs){
                     //saving the needed job info into an array
-                    if(count($jobs) != 0){
-                    $jobInfo = ["companyName" => $jobs -> company, "publisherName" => $xml -> publisher, "jobID" => $jobs -> partnerJobId, "jobTitle" => $jobs -> title, "jobDescription" => $jobs -> description, "skills" => $jobs -> skills -> skill, "experienceLvl" => $jobs -> experienceLevel, "jobFunction" => $jobs -> jobFunctions -> jobFunction, "jobLocation" => $jobs -> location, 'jobWorkPlace'=> $jobs -> workplaceTypes, "jobType" => $jobs -> jobtype, 'salaryHighEnd'=> $jobs -> salaries -> salary -> highEnd->amount, 'salaryLowEnd'=> $jobs -> salaries -> salary -> lowEnd-> amount, "currencyCode"=> $jobs -> salaries -> salary -> lowEnd-> currencyCode, "expirationDate"=> $jobs -> expirationDate, "applyUrl" => $jobs -> applyUrl];
+                        if(count($jobs) != 0){
+                            $jobInfo = ["companyName" => $jobs -> company, "publisherName" => $xml -> publisher, "jobID" => $jobs -> partnerJobId, "jobTitle" => $jobs -> title, "jobDescription" => $jobs -> description, "skills" => $jobs -> skills -> skill, "experienceLvl" => $jobs -> experienceLevel, "jobFunction" => $jobs ->  jobFunctions -> jobFunction, "jobLocation" => $jobs -> location, 'jobWorkPlace'=> $jobs -> workplaceTypes, "jobType" => $jobs -> jobtype, 'salaryHighEnd'=> $jobs -> salaries -> salary -> highEnd->amount, 'salaryLowEnd'=> $jobs -> salaries -> salary -> lowEnd-> amount, "currencyCode"=> $jobs -> salaries -> salary -> lowEnd-> currencyCode, "expirationDate"=> $jobs -> expirationDate, "applyUrl" => $jobs -> applyUrl];
+                        }
+                        if (count($jobInfo) != 0){
+                            array_push($job_array[$arrayindex], [$jobInfo['jobID']]);
+                            $this-> addPost($jobInfo, $publisherID);
+                            // $this-> updatePost($jobInfo, $publisherID);
+                        }
                     }
-                if (count($jobInfo) != 0){
-                    array_push($job_array[$arrayindex], [$jobInfo['jobID']]);
-                    $this-> addPost($jobInfo, $publisherID);
-                // $this-> updatePost($jobInfo, $publisherID);
-                }
                 }
             }
             $arrayindex ++;
