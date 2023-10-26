@@ -1,97 +1,9 @@
 <?php
 /**
-* Plugin Name: JJFY XML Parser
-* Description: XML Parser for JJFY XML Feed
-* Author: Albert Friend, Sneha Banda, Eugene Jung, Israel Rivera
-* Author URI:
-* Version: 1.0.0
-* Text Domain: JFY-XML-Plugin
-*
-*/
-
-if(!defined('ABSPATH'))
-{
-    exit;
-}
-// Plugin Constants
-define('xmlParsePath', trailingslashit(plugin_dir_path(__FILE__)));
-//Var that will come from settings page
-$formID = get_option('xml_form_id');
-<<<<<<< Updated upstream
-=======
-
-/**
- * function calls for activating and deactivating the plugin
+ * main logic of the plugin
  */
-function activate_XMLParse(){
-    require_once(xmlParsePath. 'includes/class-xmlParser-activator.php');
-    (new xmlParser_Activator)->activate();
-}
-
-function deactivate_XMLParse(){
-    require_once(xmlParsePath. 'includes/class-xmlParser-deactivation.php');
-    (new xmlParser_deactivation) ->deactivation();
-}
-
->>>>>>> Stashed changes
-// wp hooks for plugin activation and de-activation
-register_activation_hook(__FILE__ ,"activate_XMLParse");
-register_deactivation_hook(__FILE__, "deactivate_XMLParse");
-
-<<<<<<< Updated upstream
-
-function activate_XMLParse(){
-    //Inserts DB Table
-    init_db_XMLParse();
-    //adds option for form id
-    RegisterSettings();
-=======
-function xmlCrons(){
-    require_once(xmlParsePath .'includes/class-xmlParser-parser.php');
-    (new JJFYXMLParser) -> xmlParser();
->>>>>>> Stashed changes
-}
-add_action('xmlParser', 'xmlCrons');
-
-<<<<<<< Updated upstream
-function RegisterSettings(){
-    add_option('xml_form_id');
-}
-function init_db_XMLParse(){
-    global $wpdb, $table_prefix;
-    //Sets table var for wp-job-postings
-    // $jobTable = $wpdb -> prefix . 'wp_job_postings';
-    $jobTable = $table_prefix.'job_postings';
-    $charset_collate = $wpdb->get_charset_collate();
-    if ($wpdb -> get_var("show tables like '$jobTable'") != $jobTable){
-        //Create table query
-        $sql = "CREATE TABLE " .$jobTable. "(
-        PublisherID int(11) NOT NULL,
-        JobID varchar(40) NOT NULL)
-        $charset_collate;";
-        require_once( ABSPATH . '/wp-admin/includes/upgrade.php' );
-        dbDelta($sql);
-    }
-}
-
-
-function deactivate_XMLParse(){
-    delete_option('xml_form_id');
-}
-/**
-* adding js to pluging for setting page button
-*/
-
-require_once xmlParsePath . '/settings/settings.php';
-
-
 class JJFYXMLParser{
-    public function __construct()
-    {
-        add_action('init', array($this,'xmlParser'));
-    }
-
-
+    //
     // Function for pulling company urls from db
     public function retrieveCompanyURLS(){
         global $wpdb, $formID;
@@ -107,18 +19,16 @@ class JJFYXMLParser{
                 //checking if the postID is from the URL form. If it is pulling the url in and adding it to the array of urls.
                 $results = $wpdb -> get_var("SELECT COUNT(*) FROM wp_frmt_form_entry WHERE form_id = $formID AND entry_id = $ID");
                 if($results == 1){
-                $url = $wpdb -> get_col($wpdb -> prepare("SELECT meta_value FROM wp_frmt_form_entry_meta WHERE meta_key = 'url-1' AND entry_id = $ID"));
-                array_push($companyURLS, [$userID[$index], $url]);
-                $index ++;
-                }else{
+                    $url = $wpdb -> get_col($wpdb -> prepare("SELECT meta_value FROM wp_frmt_form_entry_meta WHERE meta_key = 'url-1' AND entry_id = $ID"));
+                    array_push($companyURLS, [$userID[$index], $url]);
                     $index ++;
-                }
+            }else{
+                $index ++;
+            }
             }
             return $companyURLS;
         }
     }
-
-
 
 
     //Parses XML and calls functions relating to job postings
@@ -154,12 +64,10 @@ class JJFYXMLParser{
     }
 
 
-
-
     public function addPost(&$jobInfo, $publisherID){
         //db global call
         global $wpdb;
-        // $wpdb ->show_errors();
+        $wpdb ->show_errors();
         //checking if job is present, if so it skips, if it is a new job, it adds to the db. (Might want to update this to check publisher id as well)
         // $isPresent = $wpdb -> get_results("SELECT PublisherID, JobID FROM wp_job_postings WHERE JobID = '$jobInfo[jobID]' AND PublisherID = $publisherID");
         $isPosted = $wpdb -> get_results("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND job_posting_id = $jobInfo[jobID]");
@@ -170,22 +78,16 @@ class JJFYXMLParser{
         }
     }
 
-
     public function updatePost(&$jobInfo, $publisherID){
-        /**
-        * I think we can use wpdb -> update for this
-        * https://developer.wordpress.org/reference/classes/wpdb/update/
-        * pass in the job info array from the parseing function
-        * update post if needed
-        */
-        // global $wpdb;
-        // $wpdb -> show_errors();
-        // //gets the publisher id from the links db
-        // //checks if data needs updated if it does, updates the data (this can be changed to the update class from wpdb)
-        // $wpdb -> query($wpdb -> prepare("UPDATE wp_job_postings SET CompanyName = $jobInfo[companyName], JobID = $jobInfo[jobID], JobTitle = '$jobInfo[jobTitle]', JobDesc = '$jobInfo[jobDescription]' WHERE PublisherID = $publisherID AND JobID = $jobInfo[jobID]"));
+        global $wpdb;
+        $wpdb -> show_errors();
+        //gets the publisher id from the links db
+        //checks if data needs updated if it does, updates the data (this can be changed to the update class from wpdb)
+        $wpdb -> query($wpdb -> prepare("UPDATE wp_job_postings SET CompanyName = $jobInfo[companyName], JobID = $jobInfo[jobID], JobTitle = '$jobInfo[jobTitle]', JobDesc = '$jobInfo[jobDescription]' WHERE PublisherID = $publisherID AND JobID = $jobInfo[jobID]"));
     }
     public function deleteOldPost(&$job_array){
         global $wpdb;
+        $wpdb ->show_errors();
         $publisherID = [];
         $jobIDS = [];
         $arrayIndex = 0;
@@ -202,12 +104,25 @@ class JJFYXMLParser{
             }
             $arrayIndex ++;
         }
-        /**
-        * loop over the arrays by index.
-        * select publisherID and JobID $wpdb -> get_results("SELECT PublisherID, JobID FROM `wp_job_postings` WHERE `PublisherID` = publisherID[index] AND `JobID` NOT IN (jobIDS[index])");
-        * get post id from post table.
-        * delete meta data and post
-        */
+
+        // var_dump($jobIDS[0]);
+        // unset($jobIDS[0][1]);
+        // var_dump($jobIDS[0]);
+        // $test = '54321';
+        // $test.= ', 12345';
+        // var_dump($test);
+        // $sql = "SELECT * FROM `wp_posts` WHERE `post_author`= 2 and `job_posting_id` NOT IN ($test)";
+        // $sql1 =$wpdb -> get_results($sql);
+        // print_r($sql1);
+
+    /**
+     *  loop over the arrays by index.
+     *  select publisherID and JobID $wpdb -> get_results("SELECT PublisherID, JobID FROM `wp_job_postings` WHERE `PublisherID` = publisherID[index] AND `JobID` NOT IN (jobIDS[index])");
+     *  get post id from post table.
+     *  delete meta data and post
+    */
+
+    
     }
     public function addMetaData(&$jobInfo, $publisherID){
         //if anyone can get the built in inserts to work it will be cleaner leaving them there for now.
@@ -219,7 +134,7 @@ class JJFYXMLParser{
         $payLow = $jobInfo['salaryLowEnd'];
         $currencyCode = $jobInfo['currencyCode'];
         $pay = "$payLow - $payHigh $currencyCode";
-        //setting up var for skills and to mimic tags
+        //setting up var for skills and  to mimic tags
         $skills = $jobInfo["skills"];
         $jobFunction = $jobInfo["jobFunction"];
         while ($count < count($skills)){
@@ -245,7 +160,6 @@ class JJFYXMLParser{
         // add_post_meta($post_id, '_job_salary', $pay);
         // add_post_meta($post_id, '_job_important_info', $skill);
 
-
         //normal insert
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_company_name' ,$post_id[0], '$jobInfo[companyName]')"));
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_company_website' ,$post_id[0], '$jobInfo[applyUrl]')"));
@@ -254,8 +168,6 @@ class JJFYXMLParser{
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_title' ,$post_id[0], '$jobInfo[jobTitle]')"));
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_salary' ,$post_id[0], '$pay')"));
         $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_important_info' ,$post_id[0], '$skill')"));
-
-
 
 
         // wp built in insert
@@ -268,14 +180,9 @@ class JJFYXMLParser{
 
 
 
-
-
-
-
         //extra statments
         // $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_title' ,$post_id[0], '$jobInfo[2]')"));
         // $wpdb -> insert('wp_postmeta', array('meta_key' => '_company_webstie', 'post_id' => $post_id, 'meta_value' => $jobInfo[6]));
-
 
         //gets user email via publisherID
         $userEmail = $wpdb ->get_col($wpdb ->prepare("SELECT user_email FROM wp_users WHERE ID = $publisherID"));
@@ -283,17 +190,13 @@ class JJFYXMLParser{
         $wpdb -> insert('wp_postmeta', array('meta_key' => '_application', 'post_id' => $post_id, 'meta_value' => $userEmail));
 
 
-
-
         //Checks if job is remote if so sets remote to 1
         if(strtolower($jobInfo['jobWorkPlace']) === 'remote'){
-                $wpdb -> insert('wp_postmeta', array('meta_key' => '_remote_position', 'post_id' => $post_id, 'meta_value' => '1'));
-            }else{
-                $wpdb -> insert('wp_postmeta', array('meta_key' => '_remote_position', 'post_id' => $post_id, 'meta_value' => '0'));
-                $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_location' ,$post_id[0], '$jobInfo[jobLocation]')"));
+            $wpdb -> insert('wp_postmeta', array('meta_key' => '_remote_position', 'post_id' => $post_id, 'meta_value' => '1'));
+        }else{
+            $wpdb -> insert('wp_postmeta', array('meta_key' => '_remote_position', 'post_id' => $post_id, 'meta_value' => '0'));
+            $wpdb -> query($wpdb -> prepare("INSERT INTO wp_postmeta (meta_key, post_id, meta_value) VALUES ('_job_location' ,$post_id[0], '$jobInfo[jobLocation]')"));
         }
-
-
 
 
         // Sets job type in wp_term_relationships
@@ -323,69 +226,21 @@ class JJFYXMLParser{
         $wpdb -> insert('wp_postmeta', array('meta_key' => '_featured', 'post_id' => $post_id[0], 'meta_value' => 0));
     }
 
-
     public function postJob(&$jobInfo, $publisherID){
-        global $wpdb;
-        //reg expression to get post name close to the live site
-        $companyName = strtolower(preg_replace('/\s+/', '-', $jobInfo['companyName']));
-        $jobTitle = strtoLower(preg_replace('/\s+/', '-', $jobInfo['jobTitle']));
-        $postName = "$companyName-$jobTitle";
-        //inseting into the post table
-        $wpdb -> query($wpdb -> prepare("INSERT INTO wp_posts (post_author, job_posting_id, post_content, post_title, post_status, comment_status, ping_status, post_name, post_type) VALUES ($publisherID, $jobInfo[jobID], '$jobInfo[jobDescription]', '$jobInfo[jobTitle]', 'publish', 'closed', 'closed', '$postName', 'job_listing')"));
+    global $wpdb;
+    $wpdb -> show_errors();
+    //reg expression to get post name close to the live site
+    $companyName = strtolower(preg_replace('/\s+/', '-', $jobInfo['companyName']));
+    $jobTitle = strtoLower(preg_replace('/\s+/', '-', $jobInfo['jobTitle']));
+    $postName = "$companyName-$jobTitle";
+    //inseting into the post table
+    $wpdb -> query($wpdb -> prepare("INSERT INTO wp_posts (post_author, job_posting_id, post_content, post_title, post_status, comment_status, ping_status, post_name, post_type) VALUES ($publisherID, $jobInfo[jobID], '$jobInfo[jobDescription]', '$jobInfo[jobTitle]', 'publish', 'closed', 'closed', '$postName', 'job_listing')"));
     }
-
-
-
 
     public function xmlParser(){
         $companyURLS = $this -> retrieveCompanyURLS();
         if($companyURLS){
             $this -> parse_XML($companyURLS);
         }
-=======
-// function setting_page(){
-//     require_once xmlParsePath . '/settings/settings.php';
-// }
-function setting_page(){
-    require_once xmlParsePath . 'settings/class-settings.php';
-    new Settings;
-}
-// setting_page();
-setting_page();
-// require_once xmlParsePath . '/settings/settings.php';
-// require_once xmlParsePath . 'settings/class-settings.php';
-function test(){
-    global $wpdb;
-    $query = "SELECT form.entry_id, users.user_nicename, users.ID FROM `wp_frmt_form_entry_meta` AS `form` INNER JOIN `wp_users` as `users` WHERE form.meta_value = users.ID";
-    $query_results = $wpdb->get_results($query, ARRAY_A);
-    $index = 0;
-    while($index < count($query_results)){
-        $id = $query_results[$index]['entry_id'];
-        $query = "SELECT meta_value, entry_id FROM `wp_frmt_form_entry_meta` WHERE meta_key = 'url-1' and entry_id = $id";
-        $results = $wpdb->get_results($query, ARRAY_N);
-        // var_dump($results);
-        $query_results[$index]['xml_link'] = $results[0][0];
-        $query_results[$index]['form-id'] = $results[0][1];
-        // array_push($query_results[$index], "ID" => $results);
-        $index ++; 
->>>>>>> Stashed changes
     }
-    var_dump($query_results[1]);
-    var_dump($query_results[0]);
 }
-<<<<<<< Updated upstream
-
-
-
-
-new JJFYXMLParser;
-=======
-// test();
-function run(){
-    require_once(xmlParsePath .'includes/class-xmlParser-parser.php');
-    (new JJFYXMLParser) -> xmlParser();
-    $test = plugins_url('assets/XML-Plugin-icon.png', __FILE__);
-    echo $test;
-}
-run();
->>>>>>> Stashed changes
