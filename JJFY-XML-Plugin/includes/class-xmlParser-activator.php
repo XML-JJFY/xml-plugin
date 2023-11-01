@@ -19,7 +19,8 @@ class xmlParser_Activator{
             //Create table query
             $sql = "CREATE TABLE " .$jobTable. "(
                 PublisherID int(11) NOT NULL,
-                JobID varchar(40) NOT NULL)
+                JobID varchar(40) NOT NULL,
+                PostID bigint(20) DEFAULT NULL)
                 $charset_collate;";
             require_once( ABSPATH . '/wp-admin/includes/upgrade.php' );
             dbDelta($sql);

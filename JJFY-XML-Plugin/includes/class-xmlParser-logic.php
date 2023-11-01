@@ -11,15 +11,17 @@ class JJFYXMLParser{
         $index = 0;
         //Getting userID and postID from the Table that hold them
         if(!empty($formID)){
-            $formData = $wpdb -> get_results("SELECT meta_value, entry_id FROM wp_frmt_form_entry_meta WHERE meta_key = 'hidden-1'");
+            $table = $wpdb -> prefix . 'frmt_form_entry_meta';
+            $formData = $wpdb -> get_results("SELECT meta_value, entry_id FROM $table WHERE meta_key = 'hidden-1'");
             //splitting them into their own arrays
             $postID = array_column($formData, 'entry_id');
             $userID = array_column($formData, 'meta_value');
             foreach ($postID as $ID){
+                $tableentry = $wpdb -> prefix . 'frmt_form_entry';
                 //checking if the postID is from the URL form. If it is pulling the url in and adding it to the array of urls.
-                $results = $wpdb -> get_var("SELECT COUNT(*) FROM wp_frmt_form_entry WHERE form_id = $formID AND entry_id = $ID");
+                $results = $wpdb -> get_var("SELECT COUNT(*) FROM $tableentry WHERE form_id = $formID AND entry_id = $ID");
                 if($results == 1){
-                    $results = $wpdb -> get_results($wpdb -> prepare("SELECT meta_value, date_created FROM wp_frmt_form_entry_meta WHERE meta_key = 'url-1' AND entry_id = $ID"));
+                    $results = $wpdb -> get_results($wpdb -> prepare("SELECT meta_value, date_created FROM $table WHERE meta_key = 'url-1' AND entry_id = $ID"));
                     $date = explode(' ', ($results[0] -> date_created));
                     unset($date[1]);
                     $date = implode(' ',$date);
@@ -76,7 +78,7 @@ class JJFYXMLParser{
             }
             $arrayindex ++;
         }
-        $this-> deleteOldPost($job_array);
+        // $this-> deleteOldPost($job_array);
     }
 
     private function salaryToString(&$jobInfo){
@@ -107,9 +109,14 @@ class JJFYXMLParser{
     }
 
     private function getPostID(&$jobInfo, $publisherID){
+        /**
+         * Gets post id from job_posting and checks if id is vaild if it is returns the id.
+         */
         global $wpdb;
-        //gets post_id of posting above for meta data
-        $post_id = $wpdb -> get_var($wpdb -> prepare ("SELECT ID FROM wp_posts WHERE job_posting_id = $jobInfo[jobID] AND post_author = $publisherID"));
+        $table = $wpdb -> prefix .'job_postings';
+        $postTable = $wpdb -> prefix .'posts';
+        $post_id = $wpdb -> get_var($wpdb -> prepare("SELECT PostID FROM $table WHERE PublisherID = $publisherID AND JobID = $jobInfo[jobID]"));
+        $post_id = $wpdb -> get_var($wpdb -> prepare("SELECT ID FROM $postTable WHERE ID = $post_id"));
         return $post_id;
     }
 
@@ -183,7 +190,8 @@ class JJFYXMLParser{
         global $wpdb;
         $wpdb ->show_errors();
         //checking if job is present, if so it skips, if it is a new job, it adds to the db. (Might want to update this to check publisher id as well)
-        $isPosted = $wpdb -> get_results("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND job_posting_id = $jobInfo[jobID]");
+        $ID = $this -> getPostID($jobInfo, $publisherID);
+        $isPosted = $wpdb -> get_results("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND ID = $ID");
         if (count($isPosted) == 0){
             $wpdb -> query("INSERT INTO wp_job_postings (PublisherID, JobID) VALUES ($publisherID, $jobInfo[jobID])");
             $this->postJob($jobInfo, $publisherID);
@@ -197,6 +205,7 @@ class JJFYXMLParser{
          */
         global $wpdb;
         $wpdb -> show_errors();
+        // print_r($test);
         /**
          * Pulls post id for the job in question. 
          */
@@ -375,9 +384,8 @@ class JJFYXMLParser{
     private function postJob(&$jobInfo, $publisherID){
         global $wpdb;
         //this will be setting page
-        $guidURL = 'http://localhost:5500/job/';
         /** checking if job has been posted, if so, check if any information has changed, if not post the job. */
-        $postID = $wpdb -> get_var("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND job_posting_id = $jobInfo[jobID]");
+        $postID = $this -> getPostID($jobInfo, $publisherID);
         /**
          * checks for any trailing punctuation if so delete them
          * then add then name and job title together to get url name
@@ -393,15 +401,19 @@ class JJFYXMLParser{
         }
         $postName = "$jobTitleInfo[0]-$jobTitleInfo[1]";
         $table_name = $wpdb->prefix . 'posts';
+        $jobsTable = $wpdb ->prefix . 'job_postings';
+        $guidURL = get_site_url(null, null, 'https');
+        // $guidURL.= "/job/$table_name?P=$postID";
+        $guidURL.= "/job/$postName";
         if(!$postID){
             //inseting into the post table
-            $wpdb -> insert($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
-            $postID = $this -> getPostID($jobInfo, $publisherID);
-            $guidURL .= "$postName-ID=$jobInfo[jobID]";
-            // $guidURL .= $postID;
-            $wpdb ->update($table_name, array('guid' => $guidURL, 'post_name' => $postName),  array('post_author' => $publisherID, 'ID' => $postID));
+            $wpdb -> insert($table_name, array('post_author' => $publisherID, 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing', 'guid' => $guidURL), array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+            $id = $wpdb -> get_var("SELECT ID FROM $table_name WHERE post_author = $publisherID AND post_name='$postName'");
+            $wpdb->update($jobsTable, array('PostID' => $id), array('PublisherID' => $publisherID, 'JobID' => "$jobInfo[jobID]"));
+            // $postName.= "$postName-ID=$id";
+            // $wpdb->update($table_name, array('post_name' => $postName), array('ID' => $id));
         }else{
-            $wpdb -> update($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('post_author' => $publisherID, 'ID' => $postID) , array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+            $wpdb -> update($table_name, array('post_author' => $publisherID, 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_type' => 'job_listing'), array('post_author' => $publisherID, 'ID' => $postID) , array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
         }
     }
     public function xmlParser(){
