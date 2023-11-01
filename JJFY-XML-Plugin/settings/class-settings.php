@@ -1,6 +1,4 @@
 <?php
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
 
 class Settings{
     public function __construct() {
@@ -29,10 +27,8 @@ class Settings{
 
     public function xml_parser_settings_template_callback(){
         require_once(xmlParsePath. 'settings/settings-table.php');
-        // require_once(xmlParsePath. 'settings/test-table.php');
         $xml_links_table = new xml_link_tables;
         $page = wp_unslash($_REQUEST['page']);
-        // $xml_links_table -> prepare_items();
         ?>
         <div class="xml-setting-page-wrap">
             <div class="xml-settings-wrap">
@@ -112,7 +108,7 @@ class Settings{
     }
 
     public function trigger_Plugin(){
-        require_once(xmlParsePath .'includes/class-xmlParser-parser.php');
+        require_once(xmlParsePath .'includes/class-xmlParser-logic.php');
         (new JJFYXMLParser) -> xmlParser();
     }
     function custom_trigger_plugin_action() {
