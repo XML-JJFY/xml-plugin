@@ -3,7 +3,7 @@
  * main logic of the plugin
  */
 class JJFYXMLParser{
-    //
+    
     // Function for pulling company urls from db
     private function retrieveCompanyURLS(){
         global $wpdb, $formID;
@@ -40,7 +40,6 @@ class JJFYXMLParser{
         $jobInfo = [];
         $arrayindex = 0;
         $todaysDate= (strtotime(date('Y-m-d')));
-        // print_r($companyURLS[0][2]);
         foreach($companyURLS as $company){
             // getting userID who linked the xml feed
             $publisherID = $company[0];
@@ -51,12 +50,18 @@ class JJFYXMLParser{
                 $isCurrent = strtotime($company[2]);
                 $lastbuildDate = strtotime($xml-> lastBuildDate);
                 // checks if xml loaded is the correct format if so loops over the current ones or if it is a new xml feed
-                if($lastbuildDate >= $todaysDate || $isCurrent == $todaysDate){
+                //comment this line back in after checking
+                // if($lastbuildDate >= $todaysDate || $isCurrent == $todaysDate){
                     if(!(count($xml -> job) == 0)){
                         foreach ($xml as $jobs){
                         //saving the needed job info into an array
                             if(count($jobs) != 0){
-                                $jobInfo = ["companyName" => $jobs -> company, "publisherName" => $xml -> publisher, "jobID" => $jobs -> partnerJobId, "jobTitle" => $jobs -> title, "jobDescription" => $jobs -> description, "skills" => $jobs -> skills -> skill, "experienceLvl" => $jobs -> experienceLevel, "jobFunction" => $jobs ->  jobFunctions -> jobFunction, "jobLocation" => $jobs -> location, 'jobWorkPlace'=> $jobs -> workplaceTypes, "jobType" => $jobs -> jobtype, 'salaryHighEnd'=> $jobs -> salaries -> salary -> highEnd->amount, 'salaryLowEnd'=> $jobs -> salaries -> salary -> lowEnd-> amount, "currencyCode"=> $jobs -> salaries -> salary -> lowEnd-> currencyCode, "expirationDate"=> $jobs -> expirationDate, "applyUrl" => $jobs -> applyUrl];
+                                $jobInfo = ["publisherName" => $xml -> publisher, "jobID" => $jobs -> partnerJobId, "jobTitle" => $jobs -> title, "jobDescription" => $jobs -> description, "skills" => $jobs -> skills -> skill, "experienceLvl" => $jobs -> experienceLevel, "jobFunction" => $jobs ->  jobFunctions -> jobFunction, "jobLocation" => $jobs -> location, 'jobWorkPlace'=> $jobs -> workplaceTypes, "jobType" => $jobs -> jobtype, 'salaryHighEnd'=> $jobs -> salaries -> salary -> highEnd->amount, 'salaryLowEnd'=> $jobs -> salaries -> salary -> lowEnd-> amount, "currencyCode"=> $jobs -> salaries -> salary -> lowEnd-> currencyCode, "expirationDate"=> $jobs -> expirationDate, "applyUrl" => $jobs -> applyUrl];
+                                if($jobs -> company){
+                                    $jobInfo['companyName'] = $jobs -> company;
+                                }else{
+                                    $jobInfo['companyName'] = $xml -> publisher;
+                                }
                             }
                             if (count($jobInfo) != 0){
                                 array_push($job_array[$arrayindex], [$jobInfo['jobID']]);
@@ -67,7 +72,7 @@ class JJFYXMLParser{
                             }
                         }
                     }
-                }
+                // }
             }
             $arrayindex ++;
         }
@@ -109,43 +114,46 @@ class JJFYXMLParser{
     }
 
     private function jobTypeRelationship(&$jobInfo, $post_id){
-        global $wpdb;
+        /**
+         * matches the job type with the taxonomy info
+         */
+        global $wpdb, $fullTime, $partTime, $contractor, $temporary, $intern;
         $table_name = $wpdb->prefix . 'term_relationships';
         $isPresent = $wpdb -> get_var("SELECT COUNT(*) FROM $table_name WHERE object_id = $post_id");
         if(!$isPresent){
             switch (strtolower($jobInfo['jobType'])){
                 case 'full-time':
-                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>3));
+                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>$fullTime));
                     break;
                 case 'part-time':
-                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>4));
+                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>$partTime));
                     break;
                 case 'temporary':
-                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>5));
+                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>$contractor));
                     break;
                 case 'freelance':
-                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>6));
+                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>$temporary));
                     break;
                 case 'internship':
-                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>7));
+                    $wpdb -> insert($table_name, array('object_id' => $post_id, 'term_taxonomy_id'=>$intern));
                     break;
             }
         }else{
             switch (strtolower($jobInfo['jobType'])){
                 case 'full-time':
-                    $wpdb -> update($table_name, array('term_taxonomy_id'=>3), array('object_id' => $post_id));
+                    $wpdb -> update($table_name, array('term_taxonomy_id'=>$fullTime), array('object_id' => $post_id));
                     break;
                 case 'part-time':
-                    $wpdb -> update($table_name, array('term_taxonomy_id'=>4), array('object_id' => $post_id));
+                    $wpdb -> update($table_name, array('term_taxonomy_id'=>$partTime), array('object_id' => $post_id));
                     break;
                 case 'temporary':
-                    $wpdb -> update($table_name, array('term_taxonomy_id'=>5), array('object_id' => $post_id));
+                    $wpdb -> update($table_name, array('term_taxonomy_id'=>$contractor), array('object_id' => $post_id));
                     break;
                 case 'freelance':
-                    $wpdb -> update($table_name, array('term_taxonomy_id'=>6), array('object_id' => $post_id));
+                    $wpdb -> update($table_name, array('term_taxonomy_id'=>$temporary), array('object_id' => $post_id));
                     break;
                 case 'internship':
-                    $wpdb -> update($table_name, array('term_taxonomy_id'=>7), array('object_id' => $post_id));
+                    $wpdb -> update($table_name, array('term_taxonomy_id'=>$intern), array('object_id' => $post_id));
                     break;
             }
         }
@@ -365,22 +373,37 @@ class JJFYXMLParser{
     }
 
     private function postJob(&$jobInfo, $publisherID){
-    global $wpdb;
-    /** checking if job has been posted, if so, check if any information has changed, if not post the job. */
-    $postID = $wpdb -> get_var("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND job_posting_id = $jobInfo[jobID]");
-    //reg expression to get post name close to the live site
-    $companyName = strtolower(preg_replace('/\s+/', '-', $jobInfo['companyName']));
-    $jobTitle = strtoLower(preg_replace('/\s+/', '-', $jobInfo['jobTitle']));
-    $postName = "$companyName-$jobTitle";
-    $table_name = $wpdb->prefix . 'posts';
-    if(!$postID){
-        //inseting into the post table
-        $wpdb -> insert($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
-    }else{
-        $wpdb -> update($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('post_author' => $publisherID, 'ID' => $postID) , array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+        global $wpdb;
+        //this will be setting page
+        $guidURL = 'http://localhost:5500/job/';
+        /** checking if job has been posted, if so, check if any information has changed, if not post the job. */
+        $postID = $wpdb -> get_var("SELECT ID FROM wp_posts WHERE post_author = $publisherID AND job_posting_id = $jobInfo[jobID]");
+        /**
+         * checks for any trailing punctuation if so delete them
+         * then add then name and job title together to get url name
+         */
+        $jobTitleInfoTemp = [$jobInfo['companyName'], $jobInfo['jobTitle']];
+        $jobTitleInfo = [];
+        $pattern = '/[[:punct:]]+$/';
+        foreach($jobTitleInfoTemp as $info){
+            if(preg_match($pattern, $info)){
+                $info = preg_replace($pattern, '', $info);
+            }
+            array_push($jobTitleInfo, (strtolower(preg_replace('/\s+/', '-', $info))));
+        }
+        $postName = "$jobTitleInfo[0]-$jobTitleInfo[1]";
+        $table_name = $wpdb->prefix . 'posts';
+        if(!$postID){
+            //inseting into the post table
+            $wpdb -> insert($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+            $postID = $this -> getPostID($jobInfo, $publisherID);
+            $guidURL .= "$postName-ID=$jobInfo[jobID]";
+            // $guidURL .= $postID;
+            $wpdb ->update($table_name, array('guid' => $guidURL, 'post_name' => $postName),  array('post_author' => $publisherID, 'ID' => $postID));
+        }else{
+            $wpdb -> update($table_name, array('post_author' => $publisherID, 'job_posting_id' => "$jobInfo[jobID]", 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing'), array('post_author' => $publisherID, 'ID' => $postID) , array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+        }
     }
-    }
-
     public function xmlParser(){
         $companyURLS = $this -> retrieveCompanyURLS();
         if($companyURLS){
