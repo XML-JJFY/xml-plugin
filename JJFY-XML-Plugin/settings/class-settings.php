@@ -8,13 +8,14 @@ class Settings{
         add_action('admin_init', [$this, 'custom_trigger_plugin_action']);
     }
     public function xmlparse_setting_menu (){
+        $logourl = get_site_url(null, null, 'https');
         add_menu_page(
             __('XML Parser Settings', 'JJFYXMLParser' ),
             __('XML Parser Settings', 'JJFYXMLParser' ),
             'manage_options',
             'xml-parser-settings',
             [$this, 'xml_parser_settings_template_callback'],
-            '',
+            "$logourl/wp-content/plugins/JJFY-XML-Plugin/assets/xml.png",
             null
         );
     }

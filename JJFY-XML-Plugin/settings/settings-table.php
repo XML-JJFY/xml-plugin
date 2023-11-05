@@ -156,6 +156,9 @@ class xml_link_tables extends WP_List_Table {
         
         return sprintf('%1$s %2$s', $item['user_nicename'], $this->row_actions($actions));
     }
+    protected function column_col_xml_link($item){
+        return sprintf('<a href="%1$s" target="_blank">%2$s</a>', esc_url($item['xml_link']), esc_url($item['xml_link']));
+    }
 
     protected function usort_reorder($a, $b) {
         // Sort items based on user-selected columns.
