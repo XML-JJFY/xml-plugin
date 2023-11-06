@@ -2,7 +2,7 @@
 
 ### BLS Internship
 
-A plugin that parses the company provided url gathering the job information inserting it into a table that has all the information.
+This plugin will allow companies to submit XML documents that allow their jobs to be automatical added to a Wordpress Job board that uses WP Job Manager and WPJM Extra Fields. It uses the LinkedIn XML format to keep things easy for companies to link their jobs. That can be found [here](https://learn.microsoft.com/en-us/linkedin/talent/job-postings/xml-feeds-development-guide "LinkedIn xml dev guide").
 
 The plugin will run once a day on the first visit to the site. If there is a large amount of new links, or the CRONS job is not working. There is a button in the settings to run the plugin.
 
@@ -26,6 +26,11 @@ Future Improvements:
    3. This page could allow for conditional rendering to allow a user to change the XML link once the submit it, and stop them from adding more than one link.
    4. This page could also include file uploading for company images and social links. Both of these would be added to meta data.
 2. Optimize the code more to speed up the plugin.
+   1. Adding in better checks to make sure only functions run when needed.
 3. Clean up commenting in code to make it more clear.
-4. Clean up files to be closer to the standard plugin layout
+4. Clean up files to be closer to the standard plugin layout.
 5. Allow for picture upload. Files have to be uploaded to the job manager file.
+6. Adding a better way to validate the format of the xml documents that are linked.
+7. If down the line JobsJustForYou upgrades WP Job Manager to Include Job Tags adding those to the post.
+   1. This will most likely be done via meta data.
+   2. One would just have to get job skills information, and job function or other data that is needed and add it with the right meta data tags.

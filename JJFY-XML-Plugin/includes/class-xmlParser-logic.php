@@ -3,23 +3,22 @@
  * main logic of the plugin
  */
 class JJFYXMLParser{
-    
     // Function for pulling company urls from db
     private function retrieveCompanyURLS(){
         global $wpdb, $formID;
         $companyURLS = [];
         $index = 0;
+        $tableentry = $wpdb -> prefix . 'frmt_form_entry';
+        $table = $wpdb -> prefix . 'frmt_form_entry_meta';
         //Getting userID and postID from the Table that hold them
         if(!empty($formID)){
-            $table = $wpdb -> prefix . 'frmt_form_entry_meta';
-            $formData = $wpdb -> get_results("SELECT meta_value, entry_id FROM $table WHERE meta_key = 'hidden-1'");
+            $formData = $wpdb -> get_results($wpdb -> prepare("SELECT meta_value, entry_id FROM $table WHERE meta_key = 'hidden-1'"));
             //splitting them into their own arrays
             $postID = array_column($formData, 'entry_id');
             $userID = array_column($formData, 'meta_value');
             foreach ($postID as $ID){
-                $tableentry = $wpdb -> prefix . 'frmt_form_entry';
                 //checking if the postID is from the URL form. If it is pulling the url in and adding it to the array of urls.
-                $results = $wpdb -> get_var("SELECT COUNT(*) FROM $tableentry WHERE form_id = $formID AND entry_id = $ID");
+                $results = $wpdb -> get_var($wpdb -> prepare("SELECT COUNT(*) FROM $tableentry WHERE form_id = $formID AND entry_id = $ID"));
                 if($results == 1){
                     $results = $wpdb -> get_results($wpdb -> prepare("SELECT meta_value, date_created FROM $table WHERE meta_key = 'url-1' AND entry_id = $ID"));
                     $date = explode(' ', ($results[0] -> date_created));
@@ -53,7 +52,7 @@ class JJFYXMLParser{
                 $lastbuildDate = strtotime($xml-> lastBuildDate);
                 // checks if xml loaded is the correct format if so loops over the current ones or if it is a new xml feed
                 //comment this line back in after checking
-                // if($lastbuildDate >= $todaysDate || $isCurrent == $todaysDate){
+                if($lastbuildDate >= $cutoffDate || $isCurrent >= $cutoffDate){
                     if(!(count($xml -> job) == 0)){
                         foreach ($xml as $jobs){
                         //saving the needed job info into an array
@@ -74,7 +73,7 @@ class JJFYXMLParser{
                             }
                         }
                     }
-                // }
+                }
             }
             $arrayindex ++;
         }
@@ -116,7 +115,9 @@ class JJFYXMLParser{
         $table = $wpdb -> prefix .'job_postings';
         $postTable = $wpdb -> prefix .'posts';
         $post_id = $wpdb -> get_var($wpdb -> prepare("SELECT PostID FROM $table WHERE PublisherID = $publisherID AND JobID = $jobInfo[jobID]"));
-        $post_id = $wpdb -> get_var($wpdb -> prepare("SELECT ID FROM $postTable WHERE ID = $post_id"));
+        if($post_id){
+            $post_id = $wpdb -> get_var($wpdb -> prepare("SELECT ID FROM $postTable WHERE ID = $post_id"));
+        }
         if($post_id == null){
             return $post_id = 0;
         }else{
@@ -130,7 +131,7 @@ class JJFYXMLParser{
          */
         global $wpdb, $fullTime, $partTime, $contractor, $temporary, $intern;
         $table_name = $wpdb->prefix . 'term_relationships';
-        $isPresent = $wpdb -> get_var("SELECT COUNT(*) FROM $table_name WHERE object_id = $post_id");
+        $isPresent = $wpdb -> get_var($wpdb -> prepare("SELECT COUNT(*) FROM $table_name WHERE object_id = $post_id"));
         if(!$isPresent){
             switch (strtolower($jobInfo['jobType'])){
                 case 'full-time':
@@ -172,7 +173,7 @@ class JJFYXMLParser{
 
     private function setRemoteType(&$jobInfo, $post_id){
         global $wpdb;
-        $isPresent = $wpdb -> get_var("SELECT COUNT(*) FROM wp_postmeta WHERE post_id = $post_id AND meta_key = '_remote_position'");
+        $isPresent = $wpdb -> get_var($wpdb-> prepare("SELECT COUNT(*) FROM wp_postmeta WHERE post_id = $post_id AND meta_key = '_remote_position'"));
         if(!$isPresent){
             if(strtolower($jobInfo['jobWorkPlace']) === 'remote'){
                 add_post_meta($post_id, '_remote_position', '1');
@@ -192,13 +193,16 @@ class JJFYXMLParser{
     private function addPost(&$jobInfo, $publisherID, $pay, &$skill){
         //db global call
         global $wpdb;
+        $jobPostingTable = $wpdb -> prefix . 'job_postings';
         //checking if job is present, if so it skips, if it is a new job, it adds to the db. (Might want to update this to check publisher id as well)
         $ID = $this -> getPostID($jobInfo, $publisherID);
-        $isPosted = $wpdb -> get_results("SELECT ID FROM wp_posts WHERE post_author = $publisherID  AND 'post_title' = '$jobInfo[jobTitle]' OR ID = $ID");
-        // print_r(count($isPosted));
-        // $isPosted = $wpdb -> get_results("SELECT ID FROM wp_posts WHERE post_author = $publisherID  AND ID = $ID");
-        if (count($isPosted) == 0){
-            $wpdb -> query("INSERT INTO wp_job_postings (PublisherID, JobID) VALUES ($publisherID, $jobInfo[jobID])");
+        if (!$ID){
+            $results = $wpdb-> get_var($wpdb ->prepare("SELECT PostID FROM $jobPostingTable WHERE PublisherID = $publisherID AND JobID =  $jobInfo[jobID]"));
+            if($results){
+                $wpdb ->update($jobPostingTable, array('PostID' => NULL), array('PublisherID' => $publisherID, 'JobID' => "$jobInfo[jobID]", 'PostID' => $results));
+            }else{
+                $wpdb -> insert($jobPostingTable, array('PublisherID' => $publisherID, 'JobID' => "$jobInfo[jobID]"));
+            }
             $this->postJob($jobInfo, $publisherID);
             $this->addMetaData($jobInfo, $publisherID, $pay, $skill);
         }
@@ -209,6 +213,8 @@ class JJFYXMLParser{
          * checks post information and updates any needed information that has changed. 
          */
         global $wpdb;
+        $todaysDate= strtotime(date("Y-m-d"));
+        $postTable = $wpdb -> prefix .'posts';
         /**
          * Pulls post id for the job in question. 
          */
@@ -231,6 +237,9 @@ class JJFYXMLParser{
                     break;
                 case '_job_expires':
                     update_metadata('post', $postID, $keys, "$jobInfo[expirationDate]");
+                    // if($todaysDate > (strtotime($jobInfo['expirationDate']))){
+                    //     $wpdb -> update($postTable, array('post_status' => 'expired'), array('ID' => $postID));
+                    // }
                     break;
                 case '_job_description':
                     update_metadata('post', $postID, $keys, "$jobInfo[jobDescription]");
@@ -260,7 +269,7 @@ class JJFYXMLParser{
         /**
          * Checking if any of the main job posting has changed. 
          */
-        $this ->postJob($jobInfo, $publisherID);
+        $this -> updateMainJobListing($jobInfo, $publisherID, $postID);
     }
 
     private function deleteOldPost(&$job_array){
@@ -285,17 +294,15 @@ class JJFYXMLParser{
             }
             $arrayIndex ++;
         }
-        // print_r($jobIDS);
-        unset($jobIDS[0][2]);
-        unset($jobIDS[0][1]);
-        // print_r($jobIDS);
+        // print_r($jobIDS[0][1]);
+        // unset($jobIDS[0][2]);
+        // unset($jobIDS[0][1]);
+        // print_r($jobIDS[0]);
         $index = 0;
         foreach($jobIDS as $id){
-            $test = implode(', ', $id);
-            // print_r($test);
-            $sql = "SELECT PostID FROM $idTable WHERE `PublisherID`= $publisherID[$index] and `JobID` NOT IN ($test)";
-            $sql1 =$wpdb -> get_results($sql);
-            print_r($sql1);
+            $stringID = implode(', ', $id);
+            $sql = "SELECT PostID FROM $idTable WHERE `PublisherID`= $publisherID[$index] and `JobID` NOT IN ($stringID)";
+            $sql1 =$wpdb -> get_results($wpdb -> prepare($sql));
             if(!empty($sql1)){
                 $jobid = null; 
                 foreach($sql1 as $ids){
@@ -305,8 +312,6 @@ class JJFYXMLParser{
                         $tempID = (string) $ids -> PostID;
                         $jobid.=", $tempID";
                     }
-                    // $wpdb -> delete($idTable, array('JobID' => $jobid, 'PublisherID' => $publisherID[$index]));
-                    // $wpdb -> delete($postTable, array('ID' => $jobid, 'post_author' => $publisherID[$index]));
                 }
                 // $wpdb -> delete($idTable, array('JobID' => $jobid, 'PublisherID' => $publisherID[$index]));
                 // $wpdb -> delete($postTable, array('ID' => $jobid, 'post_author' => $publisherID[$index]));
@@ -315,47 +320,25 @@ class JJFYXMLParser{
                 $sql = "DELETE FROM $postTable WHERE `post_author`= $publisherID[$index] AND `ID` IN ($jobid)";
                 $wpdb -> query( $wpdb ->prepare($sql));
                 $sql = "DELETE FROM $metaTable WHERE  `post_id` IN ($jobid)";
-                $wpdb -> query( $wpdb ->prepare($sql));
-                // print_r($jobid);
             }
-            // get post id before delete
-            $sql = "DELETE FROM $postTable WHERE `post_type`= 'job_listing' AND `post_status` = 'expired'";
-            $wpdb -> query( $wpdb ->prepare($sql));
-            // use post id to delete from         $idTable = $wpdb -> prefix ."job_postings";
-            //        $metaTable = $wpdb -> prefix ."postmeta";
             $index ++;
         }
-        // $sql = "SELECT ID FROM `wp_posts` WHERE `post_author`= 2 and `job_posting_id` NOT IN (54321)";
-        // $sql = "SELECT ID FROM `wp_posts` WHERE `post_author`= 2 and `job_posting_id` NOT IN (54321)";
-        // $sql1 =$wpdb -> get_results($sql);
-        // print_r($sql1);
-        // print_r($sql1);
-        // $test = implode(', ', $sql1);
-        // print_r($test);
-        // foreach($sql1 as $jobID){
-        //     $test = null;
-        //     if($test == null){
-        //         $test = $jobID[0];
-        //     }else{
-        //         $test.=", $jobID";
-        //     }
-        //     print_r($test);
-        // }
-        // $table_name = $wpdb->prefix . 'posts';
-        // print_r($table_name);
-        // $results = $wpdb->delete($table_name, array('ID' => $sql1), array('%d'));
-        // $table_name = $wpdb->prefix . 'postmeta';
-        // $wpdb->delete($table_name, array('post_id' => $sql1), array('%d'));
-        // $sql = "DELETE * FROM wp_post WHERE 'ID' = $sql1[0]";
-        // $wpdb -> query($sql);
-        // print_r($results);
-
-    /**
-     *  loop over the arrays by index.
-     *  select publisherID and JobID $wpdb -> get_results("SELECT PublisherID, JobID FROM `wp_job_postings` WHERE `PublisherID` = publisherID[index] AND `JobID` NOT IN (jobIDS[index])");
-     *  get post id from post table.
-     *  delete meta data and post
-    */    
+    }
+    private function deleteExpiredPost(){
+        /**
+         * Get post ids of Job listings that are expired. Deleting both the post and the meta data.
+         */
+        global $wpdb;
+        $postTable = $wpdb -> prefix ."posts";
+        $metaTable = $wpdb -> prefix ."postmeta";
+        $jobListingTable = $wpdb -> prefix ."job_postings";
+        $sql = $wpdb ->prepare("SELECT ID FROM $postTable WHERE `post_type`= 'job_listing' AND `post_status` = 'expired'");
+        $postID= $wpdb -> get_results($sql);
+        foreach($postID as $ID){
+            $wpdb -> delete($metaTable, array('post_id' => $ID -> ID));
+            $wpdb -> delete($jobListingTable, array('PostID' => $ID -> ID));
+        }
+        $wpdb -> delete($postTable, array('post_type' => 'job_listing', 'post_status' => 'expired'));
     }
     private function addMetaData(&$jobInfo, $publisherID, $pay, &$skill){
         global $wpdb;
@@ -395,23 +378,12 @@ class JJFYXMLParser{
     private function postJob(&$jobInfo, $publisherID){
         global $wpdb;
         $wpdb -> show_errors();
-        //this will be setting page
+        /**
+         * call to make post name 
+         */
+        $postName = $this -> makePostName($jobInfo, null);
         /** checking if job has been posted, if so, check if any information has changed, if not post the job. */
         $postID = $this -> getPostID($jobInfo, $publisherID);
-        /**
-         * checks for any trailing punctuation if so delete them
-         * then add then name and job title together to get url name
-         */
-        $jobTitleInfoTemp = [$jobInfo['companyName'], $jobInfo['jobTitle']];
-        $jobTitleInfo = [];
-        $pattern = '/[[:punct:]]+$/';
-        foreach($jobTitleInfoTemp as $info){
-            if(preg_match($pattern, $info)){
-                $info = preg_replace($pattern, '', $info);
-            }
-            array_push($jobTitleInfo, (strtolower(preg_replace('/\s+/', '-', $info))));
-        }
-        $postName = "$jobTitleInfo[0]-$jobTitleInfo[1]";
         $table_name = $wpdb->prefix . 'posts';
         $jobsTable = $wpdb ->prefix . 'job_postings';
         $guidURL = get_site_url(null, null, 'https');
@@ -420,12 +392,64 @@ class JJFYXMLParser{
         if(!$postID){
             //inseting into the post table
             $wpdb -> insert($table_name, array('post_author' => $publisherID, 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_name' => $postName, 'post_type' => 'job_listing', 'guid' => $guidURL), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
-            $id = $wpdb -> get_var("SELECT ID FROM $table_name WHERE post_author = $publisherID AND post_name='$postName'");
+            $id = $wpdb -> get_var($wpdb -> prepare("SELECT ID FROM $table_name WHERE post_author = $publisherID AND post_name='$postName'"));
             $wpdb->update($jobsTable, array('PostID' => $id), array('PublisherID' => $publisherID, 'JobID' => "$jobInfo[jobID]"));
             $postName.= "$id";
             $wpdb->update($table_name, array('post_name' => $postName), array('ID' => $id));
+        }
+    }
+    private function updateMainJobListing(&$jobInfo, $publisherID, $postID){
+        // post_content, post_title, post_name, 
+        global $wpdb;
+        $postTable = $wpdb -> prefix. 'posts';
+        $oldData = $wpdb -> get_row($wpdb -> prepare("SELECT `post_content`, `post_title` FROM $postTable WHERE ID = $postID AND `post_status` != 'expired'"));
+        if($oldData){
+            foreach($oldData as $keys => $value){
+                switch($keys){
+                    case 'post_content':
+                        if($value != $jobInfo['jobDescription']){
+                            $wpdb -> update($postTable, array('post_content' => "$jobInfo[jobDescription]"), array('ID' => $postID));
+                        }
+                        break;
+                    case 'post_title':
+                        if($value != $jobInfo['jobTitle']){
+                            $wpdb -> update($postTable, array('post_title' => "$jobInfo[jobTitle]"), array('ID' => $postID));
+                            $newJobName = $this -> makePostName($jobInfo, $postID);
+                            print_r($newJobName);
+                            $wpdb -> update($postTable, array('post_name' => $newJobName), array('ID' => $postID));
+                        }
+                        break;
+                }
+            }
+        }
+    }
+    private function makePostName(&$jobInfo, $postID){
+        /**
+         * returns post name, using company name jobTitle and postID if passed in
+         */
+        /**
+         * checks for any trailing punctuation if so delete them
+         * then add then name and job title together to get url name
+         */
+
+        $jobTitleInfoTemp = [$jobInfo['companyName'], $jobInfo['jobTitle']];
+        $jobTitleInfo = [];
+        $pattern = '/[[:punct:]]+$/';
+        foreach($jobTitleInfoTemp as $info){
+
+            if(preg_match($pattern, $info)){
+                $info = preg_replace($pattern, '', $info);
+    
+            }
+            array_push($jobTitleInfo, (strtolower(preg_replace('/\s+/', '-', $info))));
+      
+        }
+        $postName = "$jobTitleInfo[0]-$jobTitleInfo[1]";
+        if($postID){
+            $postName.="-$postID";
+            return $postName;
         }else{
-            $wpdb -> update($table_name, array('post_author' => $publisherID, 'post_content' => "$jobInfo[jobDescription]", 'post_title' => "$jobInfo[jobTitle]", 'post_status' => 'publish', 'ping_status' => 'closed', 'comment_status' => 'closed', 'post_type' => 'job_listing'), array('post_author' => $publisherID, 'ID' => $postID) , array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+            return $postName; 
         }
     }
     public function xmlParser(){
@@ -433,6 +457,6 @@ class JJFYXMLParser{
         if($companyURLS){
             $this -> parse_XML($companyURLS);
         }
-        print_r("plugin running");
+        // $this-> deleteExpiredPost();
     }
 }
