@@ -51,3 +51,9 @@
 .inner-button-wrapper p{
     font-size: 1rem;
 }
+.flex-center{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

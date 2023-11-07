@@ -9,6 +9,7 @@ class xmlParser_Activator{
         add_option('xml_parser_Temporary');
         add_option('xml_parser_Contractor');
         add_option('xml_parser_Intern');
+        add_option('xml_admin_approval');
     }
     private function init_db_XMLParse(){
         global $wpdb, $table_prefix;
@@ -25,7 +26,9 @@ class xmlParser_Activator{
             require_once( ABSPATH . '/wp-admin/includes/upgrade.php' );
             dbDelta($sql);
         }
+        update_option('xml_admin_approval', 'pending');
     }
+
     private function init_employment_term_meta(){
         global $wpdb;
         $table_name = $wpdb -> prefix. 'termmeta';

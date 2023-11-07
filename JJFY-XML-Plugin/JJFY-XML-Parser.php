@@ -22,6 +22,7 @@ $partTime = get_option('xml_parser_Part_Time');
 $contractor = get_option('xml_parser_Contractor');
 $temporary = get_option('xml_parser_Temporary');
 $intern = get_option('xml_parser_Intern');
+$xml_admin_approval = get_option('xml_admin_approval');
 /**
  * function calls for activating and deactivating the plugin
  */

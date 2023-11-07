@@ -5,6 +5,7 @@ class Settings{
         add_action('admin_menu', [$this, 'xmlparse_setting_menu']);
         add_action('admin_enqueue_scripts', [$this, 'addStyle']);
         add_action('admin_init', [$this, 'xml_parser_data_settings_init']);
+        add_action('admin_init', [$this, 'xml_admin_approval_init']);
         add_action('admin_init', [$this, 'custom_trigger_plugin_action']);
     }
     public function xmlparse_setting_menu (){
@@ -34,13 +35,22 @@ class Settings{
         <div class="xml-setting-page-wrap">
             <div class="xml-settings-wrap">
                 <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-                <form class="xml-setting-form" method="post" action="options.php">
-                    <?php
-                        settings_fields('xml-parser-settings');
-                        do_settings_sections('xml-parser-settings');
-                        submit_button('Save Settings');
-                    ?>
-                </form>
+                <div class="xml-setting-form">
+                    <form class='flex-center' method="post" action="options.php">
+                        <?php
+                            settings_fields('xml-parser-settings');
+                            do_settings_sections('xml-parser-settings');
+                            submit_button('Save Settings');
+                        ?>
+                    </form>
+                    <form class='flex-center' method="post" action="options.php">
+                        <?php
+                            settings_fields('xml-parser-admin-approval');
+                            do_settings_sections('xml-parser-admin-approval');
+                            submit_button('Save Settings');
+                        ?>
+                    </form>
+                </div>
             </div>
             <div class="xml-settings-wrap">
                 <h1>User links</h1>
@@ -90,6 +100,31 @@ class Settings{
         );
     }
 
+    public function xml_admin_approval_init(){
+        add_settings_section(
+            'XML-plugin_Admin_Approval',
+            'Admin Approval',
+            '',
+            'xml-parser-admin-approval'
+        );
+        // Register input option field for "Admin Approval"
+        register_setting(
+            'xml-parser-admin-approval',
+            'xml_admin_approval',
+            array(
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => ''
+            )
+        );
+        add_settings_field(
+            'xml_admin_approval',
+            __( 'Please select if you require admin approval for XML posted jobs:', 'JJFYXMLParser' ),
+            [$this, 'xml_parser_settings_admin_approval_callback'],
+            'xml-parser-admin-approval',
+            'XML-plugin_Admin_Approval'
+        );
+    }
     public function xml_parser_settings_input_field_callback() {
         global $wpdb;
         $xml_input_field = get_option('xml_form_id');
@@ -108,6 +143,23 @@ class Settings{
         <?php
     }
 
+    public function xml_parser_settings_admin_approval_callback(){
+        $adminApproval = get_option('xml_admin_approval');
+        ?>
+        <select name = 'xml_admin_approval'>
+            <?php switch($adminApproval){
+                case 'pending':
+                    echo '<option value="'.esc_attr($adminApproval). '">Yes</option>';
+                    echo '<option value="publish">No</option>';
+                    break;
+                case 'publish':
+                    echo '<option value="'.esc_attr($adminApproval). '">No</option>';
+                    echo '<option value="pending">Yes</option>';
+                    break;
+             } ?>
+        </select>
+        <?php
+    }
     public function trigger_Plugin(){
         require_once(xmlParsePath .'includes/class-xmlParser-logic.php');
         (new JJFYXMLParser) -> xmlParser();
