@@ -10,14 +10,17 @@ class xml_link_tables extends WP_List_Table {
 
     // Fetch the initial table data from the database.
     public function fetch_table_data() {
-        global $wpdb;
-        $query = "SELECT form.entry_id, users.user_nicename, users.ID FROM `wp_frmt_form_entry_meta` AS `form` INNER JOIN `wp_users` as `users` WHERE form.meta_value = users.ID";
+        global $wpdb, $formID;
+        $wp_users = $wpdb -> prefix . 'users';
+        $frmtMeta = $wpdb -> prefix . 'frmt_form_entry_meta';
+        $frmtEntry = $wpdb -> prefix .'frmt_form_entry';
+        $query = $wpdb -> prepare("SELECT form.entry_id, users.user_nicename, users.ID FROM $frmtMeta AS `form` JOIN $frmtEntry ON form.entry_id = $frmtEntry.entry_id JOIN $wp_users as `users` ON form.meta_value = users.ID WHERE form.meta_value = users.ID AND $frmtEntry.form_id = $formID");
         $query_results = $wpdb->get_results($query, ARRAY_A);
 
         $index = 0;
         while ($index < count($query_results)) {
             $id = $query_results[$index]['entry_id'];
-            $query = "SELECT meta_value, entry_id FROM `wp_frmt_form_entry_meta` WHERE meta_key = 'url-1' and entry_id = $id";
+            $query = $wpdb -> prepare("SELECT meta_value, entry_id FROM $frmtMeta WHERE meta_key = 'url-1' and entry_id = $id");
             $results = $wpdb->get_results($query, ARRAY_N);
             $query_results[$index]['xml_link'] = $results[0][0];
             $query_results[$index]['form-id'] = $results[0][1];
@@ -180,8 +183,6 @@ class xml_link_tables extends WP_List_Table {
     // Process bulk actions.
     protected function process_bulk_action() {
         global $wpdb;
-        $wpdb->show_errors();
-
         // Detect when a bulk action is being triggered.
         if ('delete' === $this->current_action()) {
             $table_name = $wpdb->prefix . 'frmt_form_entry_meta';

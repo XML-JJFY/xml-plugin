@@ -9,13 +9,14 @@ class JJFYXMLParser
     private function retrieveCompanyURLS()
     {
         global $wpdb, $formID;
+        $wpdb -> show_errors();
         $companyURLS = [];
         $index = 0;
         $tableentry = $wpdb->prefix . 'frmt_form_entry';
         $table = $wpdb->prefix . 'frmt_form_entry_meta';
         //Getting userID and postID from the Table that hold them
         if (!empty($formID)) {
-            $formData = $wpdb->get_results($wpdb->prepare("SELECT meta_value, entry_id FROM $table WHERE meta_key = 'hidden-1'"));
+            $formData = $wpdb->get_results($wpdb->prepare("SELECT meta_value, $table.entry_id FROM $table JOIN $tableentry ON $table.entry_id = $tableentry.entry_id WHERE meta_key = 'hidden-1' AND $tableentry.form_id = $formID"));
             //splitting them into their own arrays
             $postID = array_column($formData, 'entry_id');
             $userID = array_column($formData, 'meta_value');
