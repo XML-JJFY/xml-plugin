@@ -32,8 +32,10 @@ class xmlParser_Activator{
     private function init_employment_term_meta(){
         global $wpdb;
         $table_name = $wpdb -> prefix. 'termmeta';
-        $query = "SELECT term_id FROM $table_name WHERE meta_key ='employment_type'";
+        $tax = $wpdb -> prefix. 'term_taxonomy';
+        $query = $wpdb -> prepare("SELECT $tax.term_taxonomy_id FROM $tax JOIN $table_name ON $tax.term_id = $table_name.term_id WHERE meta_key ='employment_type'");
         $metaArray = $wpdb -> get_col($query);
+
         update_option('xml_parser_Full_Time', $metaArray[0]);
         update_option('xml_parser_Part_Time', $metaArray[1]);
         update_option('xml_parser_Temporary', $metaArray[2]);
